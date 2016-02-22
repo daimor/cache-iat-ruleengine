@@ -1,0 +1,266 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="Cache" version="25">
+<Class name="IAT.RuleEngine.EngineFile">
+<ClassType/>
+<ProcedureBlock>1</ProcedureBlock>
+<Super>%Studio.AbstractDocument</Super>
+<System>4</System>
+<TimeCreated>63971,760.707591</TimeCreated>
+
+<Projection name="RegisterExtension">
+<Type>%Projection.StudioDocument</Type>
+<Parameter name="DocumentDescription" value="RuleEngine file"/>
+<Parameter name="DocumentExtension" value="RULE"/>
+<Parameter name="DocumentNew" value="0"/>
+<Parameter name="DocumentType" value="xml"/>
+<Parameter name="XMLNamespace" value="RuleEngine"/>
+</Projection>
+
+<Parameter name="NAMESPACE">
+<Default>RuleEngine</Default>
+</Parameter>
+
+<Parameter name="EXTENSION">
+<Default>.rule</Default>
+</Parameter>
+
+<Parameter name="DOCUMENTCLASS">
+<Default>IAT.RuleEngine.Engine</Default>
+</Parameter>
+
+<Method name="GetClassName">
+<ClassMethod>1</ClassMethod>
+<CodeMode>expression</CodeMode>
+<FormalSpec>pName:%String</FormalSpec>
+<ReturnType>%String</ReturnType>
+<Implementation><![CDATA[$P(pName,".",1,$L(pName,".")-1)
+]]></Implementation>
+</Method>
+
+<Method name="Load">
+<Description>
+Load the routine in Name into the stream Code</Description>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+    Set tClassName = ..GetClassName(..Name)
+    
+    Set tXDataDef = ##class(%Dictionary.XDataDefinition).%OpenId(tClassName_"||XMLData")
+    If ($IsObject(tXDataDef)) {
+        do ..CopyFrom(tXDataDef.Data)
+    }
+    
+    Quit $$$OK
+]]></Implementation>
+</Method>
+
+<Method name="Compile">
+<Description>
+Compile the routine</Description>
+<FormalSpec>flags:%String</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+    Set tSC = $$$OK
+
+    If $get($$$qualifierGetValue(flags,"displaylog")){
+        Write !,"Compiling document: " _ ..Name
+    }
+    Set tSC = $System.OBJ.Compile(..GetClassName(..Name),.flags,,1)
+    
+    Quit tSC
+]]></Implementation>
+</Method>
+
+<Method name="Delete">
+<Description>
+Delete the routine 'name' which includes the routine extension</Description>
+<ClassMethod>1</ClassMethod>
+<FormalSpec>name:%String</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+    Set tSC = $$$OK
+    If (..#DOCUMENTCLASS'="") {
+        Set tSC = $System.OBJ.Delete(..GetClassName(name))
+    }
+    Quit tSC
+]]></Implementation>
+</Method>
+
+<Method name="Lock">
+<Description>
+Lock the class definition for the document.</Description>
+<FormalSpec>flags:%String</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+    If ..Locked Set ..Locked=..Locked+1 Quit $$$OK
+    Set tClassname = ..GetClassName(..Name)
+    Lock +^oddDEF(tClassname):0
+    If '$Test Quit $$$ERROR($$$CanNotLockRoutineInfo,tClassname)
+    Set ..Locked=1
+    Quit $$$OK
+]]></Implementation>
+</Method>
+
+<Method name="Unlock">
+<Description>
+Unlock the class definition for the document.</Description>
+<FormalSpec>flags:%String</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+    If '..Locked Quit $$$OK
+    Set tClassname = ..GetClassName(..Name)
+    If ..Locked>1 Set ..Locked=..Locked-1 Quit $$$OK
+    Lock -^oddDEF(tClassname)
+    Set ..Locked=0
+    Quit $$$OK
+]]></Implementation>
+</Method>
+
+<Method name="TimeStamp">
+<Description>
+Return the timestamp of routine 'name' in %TimeStamp format. This is used to determine if the routine has
+been updated on the server and so needs reloading from Studio. So the format should be $zdatetime($horolog,3),
+or "" if the routine does not exist.</Description>
+<ClassMethod>1</ClassMethod>
+<FormalSpec>name:%String</FormalSpec>
+<ReturnType>%TimeStamp</ReturnType>
+<Implementation><![CDATA[
+    If (..#DOCUMENTCLASS'="") {
+        Set cls = ..GetClassName(name)
+        Quit $ZDT($$$defClassKeyGet(cls,$$$cCLASStimechanged),3)
+    }
+    Else {
+        Quit ""
+    }
+]]></Implementation>
+</Method>
+
+<Method name="Exists">
+<Description>
+Return 1 if the routine 'name' exists and 0 if it does not.</Description>
+<ClassMethod>1</ClassMethod>
+<FormalSpec>name:%String</FormalSpec>
+<ReturnType>%Boolean</ReturnType>
+<Implementation><![CDATA[
+    Set tExists = 0
+    Try {
+        Set tClass = ..GetClassName(name)
+        Set tExists = ##class(%Dictionary.ClassDefinition).%ExistsId(tClass)
+    }
+    Catch ex {
+        Set tExists = 0
+    }
+    
+    Quit tExists
+]]></Implementation>
+</Method>
+
+<Method name="Save">
+<Description>
+Save the routine stored in Code</Description>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+    Write !,"Save: ",..Name
+    set tSC = $$$OK
+    try {
+        Set tClassName = ..GetClassName(..Name)
+        
+        Set tClassDef = ##class(%Dictionary.ClassDefinition).%OpenId(tClassName)
+        if '$isObject(tClassDef) {
+            set tClassDef = ##class(%Dictionary.ClassDefinition).%New()
+            Set tClassDef.Name = tClassName
+            Set tClassDef.Super = ..#DOCUMENTCLASS
+        }
+        
+        Set tIndex = tClassDef.XDatas.FindObjectId(tClassName_"||XMLData")
+        If tIndex'="" Do tClassDef.XDatas.RemoveAt(tIndex)
+        
+        Set tXDataDef = ##class(%Dictionary.XDataDefinition).%New()
+        Set tXDataDef.Name = "XMLData"
+        Set tXDataDef.XMLNamespace = ..#NAMESPACE
+        Set tXDataDef.parent = tClassDef
+        do ..Rewind()
+        do tXDataDef.Data.CopyFrom($this)
+        
+        set tSC = tClassDef.%Save()
+    } catch ex {
+    }
+    Quit tSC
+]]></Implementation>
+</Method>
+
+<Query name="List">
+<Type>%Query</Type>
+<FormalSpec>Directory:%String,Flat:%Boolean,System:%Boolean</FormalSpec>
+<SqlProc>1</SqlProc>
+<Parameter name="ROWSPEC" value="name:%String,modified:%TimeStamp,size:%Integer,directory:%String"/>
+</Query>
+
+<Method name="ListExecute">
+<ClassMethod>1</ClassMethod>
+<FormalSpec><![CDATA[&qHandle:%Binary,Directory:%String="",Flat:%Boolean,System:%Boolean]]></FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+    Set qHandle = ""
+    If Directory'="" Quit $$$OK
+    
+    // get list of classes
+    Set tRS = ##class(%Library.ResultSet).%New("%Dictionary.ClassDefinition:SubclassOf")
+
+    Do tRS.Execute(..#DOCUMENTCLASS)
+    While (tRS.Next()) {
+        Set qHandle("Classes",tRS.Data("Name")) = ""
+    }
+    
+    Quit $$$OK
+]]></Implementation>
+</Method>
+
+<Method name="ListFetch">
+<ClassMethod>1</ClassMethod>
+<FormalSpec><![CDATA[&qHandle:%Binary,&Row:%List,&AtEnd:%Integer=0]]></FormalSpec>
+<PlaceAfter>ListExecute</PlaceAfter>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+    Set qHandle = $O(qHandle("Classes",qHandle))
+    If (qHandle '= "") {
+        
+        Set tTime = $ZDT($$$defClassKeyGet(qHandle,$$$cCLASStimechanged),3)
+        Set Row = $LB(qHandle _ ..#EXTENSION,tTime,,"")
+        Set AtEnd = 0
+    }
+    Else {
+        Set Row = ""
+        Set AtEnd = 1
+    }
+    Quit $$$OK
+]]></Implementation>
+</Method>
+
+<Method name="GetOther">
+<Description><![CDATA[
+Return other document types that this is related to.
+Passed a name and you return a comma separated list of the other documents it is related to
+or "" if it is not related to anything<br>
+Subclass should override this behavior for non-class based editors.]]></Description>
+<ClassMethod>1</ClassMethod>
+<FormalSpec>Name:%String</FormalSpec>
+<ReturnType>%String</ReturnType>
+<Implementation><![CDATA[
+    If (..#DOCUMENTCLASS="") {
+        // no related item
+        Quit ""
+    }
+    
+    Set result = "",tCls=..GetClassName(Name)
+    
+    // This changes with MAK1867
+    If $$$defClassDefined(tCls),..Exists(Name) {
+        Set:result'="" result=result_","
+        Set result = result _ tCls _ ".cls"
+    }
+    
+    Quit result
+]]></Implementation>
+</Method>
+</Class>
+</Export>
