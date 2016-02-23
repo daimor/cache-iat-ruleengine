@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="Cache" version="25">
+<Class name="IAT.RuleEngine.EngineFileWizard">
+<Super>%ZEN.Template.studioTemplate</Super>
+<TimeCreated>63971,39194.796863</TimeCreated>
+
+<Parameter name="TEMPLATENAME">
+<Default>Rule Engine</Default>
+</Parameter>
+
+<Parameter name="TEMPLATETITLE">
+<Default>Rule Engine Wizard</Default>
+</Parameter>
+
+<Parameter name="TEMPLATEDESCRIPTION">
+<Default>Create a new RuleEngine class.</Default>
+</Parameter>
+
+<Parameter name="TEMPLATETYPE">
+<Default>xml</Default>
+</Parameter>
+
+<Parameter name="TEMPLATEMODE">
+<Description>
+What type of template.</Description>
+<Default>new</Default>
+</Parameter>
+
+<Parameter name="DOMAIN">
+<Description>
+Domain used for localization.</Description>
+<Default>RuleEngine</Default>
+</Parameter>
+
+<Parameter name="GLOBALTEMPLATE">
+<Description>
+If this is true then even if this template is tied to a specific namespace it
+will be available in any namespace and it will be up to the template to make sure
+it looks for any specific data in the target namespace.</Description>
+<Type>BOOLEAN</Type>
+<Default>0</Default>
+</Parameter>
+
+<XData name="Style">
+<Description>
+This Style block contains page-specific CSS style definitions.</Description>
+<Data><![CDATA[
+<style type="text/css">
+
+#svgFrame {
+    border: 1px solid darkblue;
+}
+.radioSetCaption {
+    font-size: 0.8em;
+}
+
+/* @doc="Style for disabled radio captions." */
+.radioSetCaptionDisabled {
+    font-size: 0.8em;
+}
+
+</style>
+]]></Data>
+</XData>
+
+<XData name="templateBody">
+<Description>
+This XML block defines the contents of the body pane of this Studio Template.</Description>
+<XMLNamespace>http://www.intersystems.com/zen</XMLNamespace>
+<Data><![CDATA[
+<pane id="body">
+
+<vgroup labelPosition="left" cellStyle="padding: 2px; padding-left: 5px; padding-right: 5px;">
+<html id="desc" OnDrawContent="%GetDescHTML"/>
+<dataCombo label="Package Name:"
+        id="ctrlPackage"
+        name="Package"
+        required="true"
+        labelClass="zenRequired"
+        title="Package name for the new page"
+        editable="true"
+        unrestricted="true"
+        searchKeyLen="0"
+        maxRows="500"
+        size="60"
+        OnCreateResultSet="CreatePackageRS"
+        onchange="zenPage.updateState();"
+/>
+
+<text label="Class Name:" 
+    id="ctrlClassName"
+    name="ClassName"
+    size="40"
+    required="true"
+    labelClass="zenRequired"
+    title="Class name for the new page" 
+    onchange="zenPage.updateState();"
+/>
+
+</vgroup>
+</pane>
+]]></Data>
+</XData>
+
+<Method name="%GetDescHTML">
+<Description>
+Provide contents of description component.</Description>
+<FormalSpec>pSeed:%String</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+    Write $$$TextHTML("This wizard creates a new Rule Engine file."),"<br/>"
+    Write $$$TextHTML("Fill in the form below and then press Finish.")
+    Quit $$$OK
+]]></Implementation>
+</Method>
+
+<Method name="%OnAfterCreatePage">
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+    #; plug in default values
+    Do %page.%SetValueById("ctrlPackage", "IAT.RuleEngine.Test")
+    Quit $$$OK
+]]></Implementation>
+</Method>
+
+<Method name="updateForm">
+<Description>
+Update state of controls on the wizard form.</Description>
+<Language>javascript</Language>
+<ClientMethod>1</ClientMethod>
+<Implementation><![CDATA[    zenPage.updateState();
+]]></Implementation>
+</Method>
+
+<Method name="onstartHandler">
+<Description>
+This is called when the template is first displayed;
+This provides a chance to set focus etc.</Description>
+<Language>javascript</Language>
+<ClientMethod>1</ClientMethod>
+<Implementation><![CDATA[
+    // give focus to name
+    var ctrl = zenPage.getComponentById('ctrlClassName');
+    if (ctrl) {
+        ctrl.focus();
+        ctrl.select();
+    }
+]]></Implementation>
+</Method>
+
+<Method name="hasMultiplePages">
+<Language>javascript</Language>
+<ClientMethod>1</ClientMethod>
+<Implementation><![CDATA[    return false;
+]]></Implementation>
+</Method>
+
+<Method name="formValidationHandler">
+<Description>
+Validation handler for form built-into template.</Description>
+<Language>javascript</Language>
+<ClientMethod>1</ClientMethod>
+<Implementation><![CDATA[    return this.validateClassName();
+]]></Implementation>
+</Method>
+
+<Method name="validateClassName">
+<Language>javascript</Language>
+<ClientMethod>1</ClientMethod>
+<Implementation><![CDATA[
+    // test if class name is valid
+    var pkgName = zenPage.getComponentById('ctrlPackage').getValue();
+    var clsName = zenPage.getComponentById('ctrlClassName').getValue();
+
+    var msg = this.IsValidClassName(pkgName + "." + clsName);
+
+    if ('' != msg) {
+        alert(msg);
+        return false;
+    }
+
+    return true;
+]]></Implementation>
+</Method>
+
+<Method name="%OnTemplateAction">
+<Description>
+This method is called when the template is complete. Any
+output to the principal device is returned to the Studio.</Description>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+    #dim tStream As %Library.Stream
+
+    Set tPackage = ..%GetValueByName("Package")
+    Set tClassName = ..%GetValueByName("ClassName")
+    Set tDescription = ..%GetValueByName("Description")
+
+    Set fileName = tPackage_"."_tClassName_".rule"
+
+    Set %session.Data("Template","NAME") = fileName
+    
+    Write "<?xml version=""1.0"" ?>",!
+    Write "<Definition>",!
+    Write "</Definition>",!
+
+    Quit $$$OK
+]]></Implementation>
+</Method>
+
+<Method name="CreatePackageRS">
+<Description>
+Create the result set used by the Package dataCombo.</Description>
+<FormalSpec>*tSC:%Status,pInfo:%ZEN.Auxiliary.QueryInfo</FormalSpec>
+<ReturnType>%ResultSet</ReturnType>
+<Implementation><![CDATA[
+    Set tRS = ""
+    Set tSC = $$$OK
+
+    Set tRS = ##class(%ResultSet).%New()
+    Set tRS.ClassName = "%ZEN.Utils"
+    Set tRS.QueryName = "EnumeratePackages"
+    Quit tRS
+]]></Implementation>
+</Method>
+</Class>
+</Export>

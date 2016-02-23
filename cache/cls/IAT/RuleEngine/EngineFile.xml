@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Export generator="Cache" version="25">
 <Class name="IAT.RuleEngine.EngineFile">
-<ClassType/>
-<ProcedureBlock>1</ProcedureBlock>
 <Super>%Studio.AbstractDocument</Super>
 <System>4</System>
 <TimeCreated>63971,760.707591</TimeCreated>
